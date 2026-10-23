@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero de Control CECF - Cardiología Fetal ICV-HIC</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        icv: {
+                            navy: '#0F2C59',
+                            darkNavy: '#0A1E3F',
+                            royal: '#0284C7',
+                            teal: '#00A896',
+                            coral: '#F05454',
+                            amber: '#D97706',
+                            slate: '#F8FAFC',
+                            cardBg: '#FFFFFF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .bg-pattern {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 0.8px, transparent 0.8px);
+            background-size: 16px 16px;
+        }
+    </style>
+</head>
+<body class="bg-pattern font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-icv-navy text-white border-b border-icv-darkNavy sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Branding & Executive Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-icv-teal flex items-center justify-center font-bold text-white text-xl shadow-md">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="font-extrabold text-white text-base sm:text-lg tracking-tight">Centro de Excelencia en Cardiología Fetal (CECF)</h1>
+                            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-200 font-semibold border border-cyan-400/30 hidden sm:inline-block">
+                                ICV - HIC | Sincronizado SAHI
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 hidden md:block">Monitoreo operacional in utero, transición perinatal y registro epidemiológico de investigación</p>
+                    </div>
+                </div>
+
+                <!-- Global Action Controls -->
+                <div class="flex items-center space-x-3 text-xs">
+                    <span class="hidden lg:flex items-center space-x-1.5 text-slate-300 bg-white/10 px-3 py-1.5 rounded-lg border border-white/10">
+                        <i class="fa-regular fa-clock text-cyan-400"></i>
+                        <span>Actualizado: Hoy, 11:30 AM</span>
+                    </span>
+
+                    <button onclick="exportToExcel()" class="bg-icv-teal hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 shadow-md">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Exportar BD REDCap / Excel</span>
+                    </button>
+
+                    <button onclick="refreshData()" class="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition border border-white/10" title="Refrescar Datos">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TOP MAIN VIEW NAVIGATION TABS -->
+            <div class="flex space-x-6 border-t border-white/10 text-xs sm:text-sm font-semibold overflow-x-auto custom-scrollbar">
+                <button onclick="showView('view-patients-list')" id="btn-view-patients-list" class="top-nav-btn py-3 border-b-2 border-icv-teal text-cyan-300 flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-users-rectangle"></i>
+                    <span>1. Dashboard General de Pacientes</span>
+                </button>
+
+                <button onclick="showView('view-patient-detail')" id="btn-view-patient-detail" class="top-nav-btn py-3 border-b-2 border-transparent text-slate-300 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-hospital-user"></i>
+                    <span>2. Seguimiento Individual de Paciente</span>
+                </button>
+                
+                <button onclick="showView('view-kpis')" id="btn-view-kpis" class="top-nav-btn py-3 border-b-2 border-transparent text-slate-300 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>3. Indicadores Clave (KPIs) & Módulos</span>
+                </button>
+
+                <button onclick="showView('view-sla-matrix')" id="btn-view-sla-matrix" class="top-nav-btn py-3 border-b-2 border-transparent text-slate-300 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-stopwatch"></i>
+                    <span>4. Central de Seguimiento & Tiempos SLA</span>
+                </button>
+
+                <button onclick="showView('view-datagrid')" id="btn-view-datagrid" class="top-nav-btn py-3 border-b-2 border-transparent text-slate-300 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-database"></i>
+                    <span>5. BD Investigación (<span id="count-total-records">128</span>)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <section class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div class="flex items-center space-x-2 text-xs font-bold text-icv-navy uppercase tracking-wider min-w-max">
+                    <i class="fa-solid fa-filter text-icv-royal"></i>
+                    <span>Filtros Dinámicos:</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 w-full text-xs">
+                    <div>
+                        <select id="filter-date" onchange="applyGlobalFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                            <option value="ALL">Rango: Histórico Completo</option>
+                            <option value="YTD" selected>Año 2026 (YTD)</option>
+                            <option value="Q3">Último Trimestre (Q3 2026)</option>
+                            <option value="MONTH">Último Mes</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-risk" onchange="applyGlobalFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                            <option value="ALL">Riesgo CECF: Todos</option>
+                            <option value="1">Nivel 1 - Riesgo Bajo</option>
+                            <option value="2">Nivel 2 - Riesgo Intermedio</option>
+                            <option value="3">Nivel 3 - Riesgo Alto / Crítico</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-eps" onchange="applyGlobalFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                            <option value="ALL">EAPB: Todas las Aseguradoras</option>
+                            <option value="SURA">SURA EPS</option>
+                            <option value="NUEVA EPS">Nueva EPS</option>
+                            <option value="SANITAS">EPS Sanitas</option>
+                            <option value="FAMISANAR">Famisanar</option>
+                            <option value="COMPENSAR">Compensar</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-origin" onchange="applyGlobalFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                            <option value="ALL">Procedencia: Todos los Dptos</option>
+                            <option value="Santander">Santander</option>
+                            <option value="Norte de Santander">Norte de Santander</option>
+                            <option value="Cesar">Cesar</option>
+                            <option value="Arauca">Arauca</option>
+                            <option value="Otros">Otros Departamentos</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-dx-type" onchange="applyGlobalFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                            <option value="ALL">Tipo Cardiopatía: Todas</option>
+                            <option value="Septales">Defectos Septales / Conotroncales</option>
+                            <option value="Obstructivas">Lesiones Obstructivas (Coartación)</option>
+                            <option value="Univentricular">Fisiología Univentricular / Complejas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="resetGlobalFilters()" class="text-xs text-icv-royal hover:underline font-bold self-end lg:self-center min-w-max">
+                    Restablecer
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- ================= VIEW 0: GENERAL PATIENTS DASHBOARD (DEFAULT LANDING) ================= -->
+        <div id="view-patients-list" class="view-page space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                    <h2 class="text-base font-extrabold text-icv-navy flex items-center space-x-2">
+                        <i class="fa-solid fa-users-viewfinder text-icv-teal"></i>
+                        <span>Cohorte Activa de Gestantes en Seguimiento CECF</span>
+                    </h2>
+                    <p class="text-xs text-slate-500">Seleccione cualquier paciente para abrir su pestaña de seguimiento detallado, escalas clínicas y gestión de citas.</p>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <input type="text" id="patient-search-input" onkeyup="filterPatientCards()" placeholder="Buscar por Nombre, Cédula o Dx..." class="text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-icv-royal focus:outline-none w-64">
+                    <button onclick="showView('view-patient-detail')" class="bg-icv-navy text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-icv-darkNavy transition">
+                        <i class="fa-solid fa-folder-open mr-1"></i> Ver Ficha Actual
+                    </button>
+                </div>
+            </div>
+
+            <!-- PATIENT CARDS GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="patient-cards-container">
+                <!-- Patient cards dynamically generated by JS -->
+            </div>
+        </div>
+
+        <div id="view-patient-detail" class="view-page space-y-6 hidden">
+            <!-- Patient Header Summary Banner -->
+            <div class="bg-gradient-to-r from-icv-navy to-icv-darkNavy text-white rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-icv-teal/20 border border-icv-teal flex items-center justify-center text-icv-teal text-2xl font-bold">
+                        <i class="fa-solid fa-person-pregnant"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-3">
+                            <h2 class="text-xl font-extrabold" id="patient-detail-name">María Camila Rodríguez</h2>
+                            <span class="bg-rose-500/20 text-rose-200 border border-rose-400/30 text-xs font-bold px-2.5 py-0.5 rounded-full" id="patient-detail-risk">🔴 Riesgo Nivel 3 (Alto)</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1" id="patient-detail-meta">CC: 1.098.456.789 | Edad: 28 años | Semanas: 31.4 Sem (Captura: 20.4 Sem) | SURA EPS | Bucaramanga</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 text-xs">
+                    <button onclick="switchPatientTab('tab-msg-welcome')" class="bg-icv-teal hover:bg-teal-600 text-white font-bold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Enviar Bienvenida</span>
+                    </button>
+                    <button onclick="switchPatientTab('tab-msg-reminder')" class="bg-icv-royal hover:bg-sky-600 text-white font-bold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span>Recordatorio Cita</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Patient Internal Tabs Navigation -->
+            <div class="bg-white rounded-2xl p-2 border border-slate-200 shadow-sm">
+                <nav class="flex space-x-2 overflow-x-auto custom-scrollbar text-xs font-bold">
+                    <button onclick="switchPatientTab('tab-clinical-info')" id="btn-tab-clinical-info" class="patient-subtab-btn bg-icv-navy text-white px-4 py-2 rounded-xl transition whitespace-nowrap">
+                        <i class="fa-solid fa-notes-medical mr-1.5"></i> Datos Generales & Diagnósticos
+                    </button>
+                    <button onclick="switchPatientTab('tab-msg-welcome')" id="btn-tab-msg-welcome" class="patient-subtab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-xl transition whitespace-nowrap">
+                        <i class="fa-solid fa-heart text-rose-500 mr-1.5"></i> Mensaje de Bienvenida CECF
+                    </button>
+                    <button onclick="switchPatientTab('tab-msg-reminder')" id="btn-tab-msg-reminder" class="patient-subtab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-xl transition whitespace-nowrap">
+                        <i class="fa-solid fa-bell mr-1.5"></i> Recordatorio Cita Control (Semana 32)
+                    </button>
+                    <button onclick="switchPatientTab('tab-scales-eval')" id="btn-tab-scales-eval" class="patient-subtab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-xl transition whitespace-nowrap">
+                        <i class="fa-solid fa-clipboard-check mr-1.5"></i> Escalas Psicosociales & PROMs/PREMs
+                    </button>
+                </nav>
+            </div>
+
+            <!-- PATIENT SUBTAB 1: CLINICAL INFORMATION -->
+            <div id="tab-clinical-info" class="patient-subtab-content space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- General Details -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <h3 class="font-extrabold text-sm text-icv-navy border-b pb-2 flex items-center justify-between">
+                            <span>Información Clínica del Binomio</span>
+                            <i class="fa-solid fa-id-card text-icv-royal"></i>
+                        </h3>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">Diagnóstico Prenatal CECF:</span>
+                                <strong class="text-slate-900 font-semibold" id="p-detail-dx">TGA (Transposición de Grandes Arterias)</strong>
+                            </div>
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">CIE-10 Materno / Fetal:</span>
+                                <strong class="font-mono text-slate-800">O99.8 / O35.8</strong>
+                            </div>
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">Clasificación CHOP:</span>
+                                <strong class="text-slate-900" id="p-detail-chop">Level 6 (Alto Riesgo Quirúrgico)</strong>
+                            </div>
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">Clasificación IMPACT:</span>
+                                <strong class="text-rose-700 font-bold" id="p-detail-impact">Class IIIa (Intervención Neonatal Temprana)</strong>
+                            </div>
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">Concordancia Pre/Postnatal:</span>
+                                <strong class="text-emerald-700 font-bold"><i class="fa-solid fa-circle-check"></i> Confirmado (100%)</strong>
+                            </div>
+                            <div class="flex justify-between py-1 border-b border-slate-100">
+                                <span class="text-slate-500">Aseguradora EAPB:</span>
+                                <strong class="text-slate-800" id="p-detail-eps">SURA EPS</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medical Team & Plan -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-2">
+                        <h3 class="font-extrabold text-sm text-icv-navy border-b pb-2 flex items-center justify-between">
+                            <span>Equipo Multidisciplinario & Plan de Manejo Perinatal</span>
+                            <i class="fa-solid fa-user-doctor text-icv-teal"></i>
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <span class="text-slate-500 font-medium">Cardiología Fetal Responsable:</span>
+                                <p class="font-bold text-icv-navy text-sm">Dra. Yudisay Molina</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <span class="text-slate-500 font-medium">Medicina Materno-Fetal (MMF):</span>
+                                <p class="font-bold text-slate-800">Dra. L. Rodríguez / MMF ICV</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <span class="text-slate-500 font-medium">Navegadora / Enfermería:</span>
+                                <p class="font-bold text-slate-800">Enf. Jefe Central CECF</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <span class="text-slate-500 font-medium">Trabajo Social & Psicología:</span>
+                                <p class="font-bold text-slate-800">Equipo Apoyo Psicosocial HIC</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1 mt-2">
+                            <div class="font-bold flex items-center space-x-1">
+                                <i class="fa-solid fa-circle-exclamation text-amber-600"></i>
+                                <span>Plan de Parto & Programación:</span>
+                            </div>
+                            <p class="text-[11px] text-amber-800">Programar cesárea / parto electivo en ICV-HIC con cupo reservado en UCIN Neonatal a la Semana 38. Disponibilidad de Cirugía Cardiovascular Pediátrica.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PATIENT SUBTAB 2: WELCOME MESSAGE TEMPLATE -->
+            <div id="tab-msg-welcome" class="patient-subtab-content space-y-4 hidden">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b pb-3">
+                        <div>
+                            <h3 class="font-extrabold text-base text-icv-navy flex items-center space-x-2">
+                                <i class="fa-solid fa-heart text-rose-500"></i>
+                                <span>Mensaje Institucional de Bienvenida al CECF</span>
+                            </h3>
+                            <p class="text-xs text-slate-500">Mensaje automático enviado al momento del ingreso de la gestante al Centro de Excelencia.</p>
+                        </div>
+                        <button onclick="copyWelcomeMessage()" class="bg-icv-teal hover:bg-teal-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar Texto</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 font-sans text-xs text-slate-800 space-y-3 leading-relaxed" id="welcome-message-body">
+                        <p class="font-bold text-sm text-icv-navy">¡Bienvenida al Centro de Excelencia en Cardiología Fetal del HIC - Instituto Cardiovascular! <span class="text-rose-500 font-bold">❤️</span>👶</p>
+                        <p>Sabemos que este es un momento de muchas emociones, dudas y preguntas. Queremos que sepas que no estás sola. A partir de hoy, tú y tu bebé cuentan con los brazos abiertos de un equipo humano y médico especializado que estará a tu lado en cada paso del camino.</p>
+                        <p>En nuestro Centro de Excelencia no solo cuidamos la salud del corazón de tu bebé con la más alta tecnología; cuidamos de ti. Dispones de un equipo multidisciplinario completo (Cardiología Fetal, Medicina Materno-Fetal, Enfermería, Psicología, Trabajo Social y Nutrición) enfocado en brindarte una atención humana, cálida y de máxima excelencia.</p>
+                        <p class="font-bold text-slate-900">¿Qué puedes esperar de nosotros?</p>
+                        <ul class="list-disc pl-5 space-y-1 text-slate-700">
+                            <li>📞 <strong>Seguimiento y acompañamiento telefónico continuo:</strong> Estaremos pendientes de tus citas, dudas y evolución.</li>
+                            <li>🤝 <strong>Apoyo integral:</strong> Queremos que te sientas escuchada, respaldada y segura en todo momento.</li>
+                            <li>👩‍⚕️ <strong>Atención especializada y empática:</strong> Tu bienestar y el de tu bebé son nuestra prioridad.</li>
+                        </ul>
+                        <p class="italic text-slate-600 font-medium pt-2">Gracias por confiarnos lo más valioso. ¡Caminaremos juntos durante esta etapa!</p>
+                    </div>
+
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="sendSimulatedWhatsApp('welcome')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>Enviar por WhatsApp a la Gestante</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PATIENT SUBTAB 3: CONTROL APPOINTMENT REMINDER (WEEK 32) -->
+            <div id="tab-msg-reminder" class="patient-subtab-content space-y-4 hidden">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-2">
+                        <div>
+                            <h3 class="font-extrabold text-base text-icv-navy flex items-center space-x-2">
+                                <i class="fa-solid fa-calendar-check text-icv-royal"></i>
+                                <span>Recordatorio de Consulta de Control (Semana 32)</span>
+                            </h3>
+                            <p class="text-xs text-slate-500">Notificación personalizada previa al seguimiento ecocardiográfico seriado.</p>
+                        </div>
+                        <button onclick="copyReminderMessage()" class="bg-icv-royal hover:bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar Texto Personalizado</span>
+                        </button>
+                    </div>
+
+                    <!-- Dynamic Form Controls for Customizing Message -->
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Nombre Paciente / Bebé:</label>
+                            <input type="text" id="rem-input-name" value="María Camila Rodríguez" oninput="updateReminderPreview()" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Fecha Programada:</label>
+                            <input type="date" id="rem-input-date" value="2026-11-15" onchange="updateReminderPreview()" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Hora:</label>
+                            <input type="time" id="rem-input-time" value="09:30" onchange="updateReminderPreview()" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Piso / Consultorio:</label>
+                            <input type="text" id="rem-input-location" value="Piso 4, Consultorio 402 - Ecocardiografía Fetal" oninput="updateReminderPreview()" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-icv-royal focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 font-sans text-xs text-slate-800 space-y-3 leading-relaxed" id="reminder-message-body">
+                        <!-- Filled dynamically by updateReminderPreview() -->
+                    </div>
+
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="sendSimulatedWhatsApp('reminder')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>Enviar Recordatorio por WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PATIENT SUBTAB 4: PSYCHOSOCIAL SCALES, PROMS & PREMS -->
+            <div id="tab-scales-eval" class="patient-subtab-content space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Mental Health Scales -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h4 class="font-extrabold text-xs text-icv-navy uppercase tracking-wider border-b pb-2 flex items-center justify-between">
+                            <span>1. Salud Mental & PROMs</span>
+                            <i class="fa-solid fa-brain text-icv-teal"></i>
+                        </h4>
+                        
+                        <div class="space-y-3 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>STAI (Ansiedad Estado-Rasgo):</span>
+                                    <span class="text-amber-700">41.2 pts (Moderada)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Evaluación de ansiedad ante diagnóstico prenatal.</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>EPDS (Depresión Edimburgo):</span>
+                                    <span class="text-emerald-700">5.8 pts (Bajo Riesgo)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Tamizaje de depresión perinatal.</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>Escalas GAD-2 y WHOOLEY:</span>
+                                    <span class="text-emerald-700">Negativo (0 pts)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Tamizaje ultrarrápido de salud mental en preconsulta.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Psychosocial Risk & Route 3280 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h4 class="font-extrabold text-xs text-icv-navy uppercase tracking-wider border-b pb-2 flex items-center justify-between">
+                            <span>2. Riesgo Psicosocial & Ruta 3280</span>
+                            <i class="fa-solid fa-route text-icv-royal"></i>
+                        </h4>
+
+                        <div class="space-y-3 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>Escala Herrera y Hurtado:</span>
+                                    <span class="text-icv-navy font-extrabold">Riesgo Bajo (92% Adherencia)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Riesgo psicosocial familiar según norma colombiana Res. 3280.</p>
+                            </div>
+
+                            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>Navegación / Trabajo Social:</span>
+                                    <span class="text-emerald-700"><i class="fa-solid fa-check-double"></i> Albergue Aprobado</span>
+                                </div>
+                                <p class="text-[11px] text-emerald-800">Apoyo de transporte y hospedaje verificado para el parto en ICV-HIC.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quality of Life & Competencies -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h4 class="font-extrabold text-xs text-icv-navy uppercase tracking-wider border-b pb-2 flex items-center justify-between">
+                            <span>3. Calidad de Vida & Autogestión</span>
+                            <i class="fa-solid fa-heart-pulse text-icv-teal"></i>
+                        </h4>
+
+                        <div class="space-y-3 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>Calidad de Vida (EQ-5D / SF-36):</span>
+                                    <span class="text-icv-royal font-mono font-bold">0.84 / 1.00</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Percepción de salud física y emocional.</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                                <div class="flex justify-between font-bold">
+                                    <span>Chequeo Autogestión Cuidador:</span>
+                                    <span class="text-emerald-700 font-bold">100% Cumplido</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Capacitación sobre signos de alarma neonatal aprobada.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <div id="view-kpis" class="view-page space-y-6 hidden">
+            <!-- Strategic KPIs Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Detección Prenatal</span>
+                        <i class="fa-solid fa-bullseye text-icv-royal"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-icv-navy">88.4%</div>
+                    <p class="text-[10px] text-emerald-600 font-bold flex items-center">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> +3.2% vs Meta (85%)
+                    </p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Concordancia Pre/Post</span>
+                        <i class="fa-solid fa-check-double text-icv-teal"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-icv-navy">94.1%</div>
+                    <p class="text-[10px] text-emerald-600 font-bold flex items-center">
+                        <i class="fa-solid fa-check mr-1"></i> Meta &gt; 90% Cumplida
+                    </p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Supervivencia al Alta</span>
+                        <i class="fa-solid fa-shield-heart text-rose-500"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-icv-navy">89.2%</div>
+                    <p class="text-[10px] text-emerald-600 font-bold flex items-center">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> Meta &gt; 85%
+                    </p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Oportunidad Dx SLA</span>
+                        <i class="fa-solid fa-stopwatch text-amber-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-icv-navy">4.2 Días</div>
+                    <p class="text-[10px] text-emerald-600 font-bold flex items-center">
+                        <i class="fa-solid fa-check mr-1"></i> Meta &le; 7 Días
+                    </p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Entrega a PROMESA</span>
+                        <i class="fa-solid fa-handshake text-purple-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-icv-navy">100%</div>
+                    <p class="text-[10px] text-emerald-600 font-bold flex items-center">
+                        <i class="fa-solid fa-circle-check mr-1"></i> Cobertura Total
+                    </p>
+                </div>
+            </div>
+
+            <!-- MODULE A & B CHARTS -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Module A: Risk & Anatomy -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="font-extrabold text-sm text-icv-navy border-b pb-2 flex items-center justify-between">
+                        <span>Módulo A: Clasificación de Riesgo & Anatomía Fetal</span>
+                        <i class="fa-solid fa-chart-pie text-icv-teal"></i>
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="chart-risk-dist"></canvas>
+                    </div>
+                </div>
+
+                <!-- Module B: Origin & Channels -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="font-extrabold text-sm text-icv-navy border-b pb-2 flex items-center justify-between">
+                        <span>Módulo B: Demografía & Canales de Captación</span>
+                        <i class="fa-solid fa-map-location-dot text-icv-royal"></i>
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="chart-origin-dist"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-sla-matrix" class="view-page space-y-6 hidden">
+            
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-extrabold text-icv-navy flex items-center space-x-2">
+                        <i class="fa-solid fa-stopwatch text-icv-teal"></i>
+                        <span>Central de Seguimiento: Matriz de Tiempos, Disparadores & Reglas SLA (Exclusivo CECF)</span>
+                    </h2>
+                    <span class="text-xs bg-cyan-100 text-icv-navy font-bold px-3 py-1 rounded-full">Protocolo Institucional CECF</span>
+                </div>
+                <p class="text-xs text-slate-500">Tiempos estipulados para el monitoreo de citas, exámenes diagnósticos, aplicación de escalas PROMs y reglas de disparo para la central operativa.</p>
+            </div>
+
+            <!-- ACTIVE TRIGGER ALERTS DASHBOARD -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-xs space-y-1">
+                    <div class="flex justify-between font-bold text-rose-900">
+                        <span>1. Alerta Orden Diagnóstica</span>
+                        <span class="bg-rose-200 px-2 py-0.5 rounded-full text-rose-800">SLA &le; 7 Días</span>
+                    </div>
+                    <p class="text-rose-700 text-[11px]">Contador activo desde la orden. Genera alerta automática al superar el Día 5 sin cita programada.</p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs space-y-1">
+                    <div class="flex justify-between font-bold text-amber-900">
+                        <span>2. Alerta de Preconsulta</span>
+                        <span class="bg-amber-200 px-2 py-0.5 rounded-full text-amber-800">3 Días Antes</span>
+                    </div>
+                    <p class="text-amber-700 text-[11px]">Aplicación de escala Herrera y Hurtado + confirmación telefónica 3 días antes de la cita.</p>
+                </div>
+
+                <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 text-xs space-y-1">
+                    <div class="flex justify-between font-bold text-sky-900">
+                        <span>3. Alerta Pos-Alta Inmediata</span>
+                        <span class="bg-sky-200 px-2 py-0.5 rounded-full text-sky-800">Día 3 y Día 7</span>
+                    </div>
+                    <p class="text-sky-700 text-[11px]">Disparo automático de llamadas de seguimiento por telemedicina a las 72h y 7 días pos-egreso.</p>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs space-y-1">
+                    <div class="flex justify-between font-bold text-emerald-900">
+                        <span>4. Cierre y Traslado PROMESA</span>
+                        <span class="bg-emerald-200 px-2 py-0.5 rounded-full text-emerald-800">Pre-Egreso</span>
+                    </div>
+                    <p class="text-emerald-700 text-[11px]">Verificación de acta y constancia de transferencia a PROMESA previo al cierre del caso.</p>
+                </div>
+            </div>
+
+            <!-- TABLE 1: TIEMPOS DE SEGUIMIENTO MÉDICO Y OPERATIVO -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-5">
+                <h3 class="font-extrabold text-sm text-icv-navy flex items-center space-x-2 border-b pb-2">
+                    <i class="fa-solid fa-user-clock text-icv-royal"></i>
+                    <span>1. Tiempos de Seguimiento Médico y Operativo</span>
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-3">Evento / Disparador (Trigger)</th>
+                                <th class="p-3">Tipo de Seguimiento</th>
+                                <th class="p-3">Frecuencia / SLA Estipulado</th>
+                                <th class="p-3">Estado en Guía</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Ingreso de Cita Programada</td>
+                                <td class="p-3 text-slate-600">Gestión de Preconsulta</td>
+                                <td class="p-3 font-semibold text-icv-navy">3 días antes de la cita (contacto telefónico y revisión web)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Hospitalización de Gestante</td>
+                                <td class="p-3 text-slate-600">Ronda de Enfermería</td>
+                                <td class="p-3 font-semibold text-icv-navy">Diario (seguimiento presencial por Enfermera Jefe)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Egreso Hospitalario / Posparto</td>
+                                <td class="p-3 text-slate-600">Telemedicina y Soporte Inmediato</td>
+                                <td class="p-3 font-semibold text-icv-navy">A las 72 horas y a los 7 días posteriores al egreso (videollamadas)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Cierre de Caso en CECF</td>
+                                <td class="p-3 text-slate-600">Traslado / Entrega a PROMESA</td>
+                                <td class="p-3 font-semibold text-icv-navy">Al momento del egreso hospitalario (verificación constancia)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Consulta Médica Prenatal de Rutina</td>
+                                <td class="p-3 text-slate-600">Control Fetal Seriado</td>
+                                <td class="p-3 font-semibold text-slate-600">Dinámico según nivel de riesgo (1, 2 o 3)</td>
+                                <td class="p-3"><span class="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full text-[10px]">Sin frecuencia fija</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABLE 2: TIEMPOS DE PROCEDIMIENTOS Y EXÁMENES -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-5">
+                <h3 class="font-extrabold text-sm text-icv-navy flex items-center space-x-2 border-b pb-2">
+                    <i class="fa-solid fa-microscope text-icv-teal"></i>
+                    <span>2. Tiempos de Realización de Procedimientos y Exámenes</span>
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-3">Procedimiento / Examen</th>
+                                <th class="p-3">Ventana / Tiempo Máximo de Respuesta (SLA)</th>
+                                <th class="p-3">Estado en Guía</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Tamizaje Inicial Universal (Obstetricia / MMF)</td>
+                                <td class="p-3 font-semibold text-icv-navy">Semana 11 a 14 de gestación</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Ecocardiografía Fetal Anatómica (Ventana Ideal)</td>
+                                <td class="p-3 font-semibold text-icv-navy">Semana 20 a 24 de gestación (captación óptima sem 18–24)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Ecocardiografía Fetal por Sospecha Clínica</td>
+                                <td class="p-3 font-semibold text-rose-700 font-bold">&le; 7 días (o &le; 5 días) desde la emisión de la orden</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Ecocardiograma Neonatal de Confirmación</td>
+                                <td class="p-3 font-semibold text-icv-navy">Primeras 12 a 24 horas de vida (o inmediato in-situ si es crítico)</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Junta Médica Multidisciplinaria</td>
+                                <td class="p-3 font-semibold text-icv-navy">&le; 5 días hábiles tras el diagnóstico</td>
+                                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Registrado</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABLE 3: TIEMPOS PARA APLICACIÓN DE ESCALAS, PROMS Y PREMS -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-5">
+                <h3 class="font-extrabold text-sm text-icv-navy flex items-center space-x-2 border-b pb-2">
+                    <i class="fa-solid fa-clipboard-list text-icv-royal"></i>
+                    <span>3. Tiempos para Aplicación de Escalas Clínicas, PROMs y PREMs</span>
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-3">Escala / Instrumento</th>
+                                <th class="p-3">Tipo de Medición</th>
+                                <th class="p-3">Momento de Aplicación / Disparador</th>
+                                <th class="p-3">Frecuencia / Re-evaluación</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Escala Herrera y Hurtado (Res. 3280)</td>
+                                <td class="p-3 text-slate-600">Riesgo Psicosocial</td>
+                                <td class="p-3 font-semibold text-icv-navy">Durante la Preconsulta (previo a cita)</td>
+                                <td class="p-3"><span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Al ingreso</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Cuestionarios STAI, EPDS, GAD-2, WHOOLEY</td>
+                                <td class="p-3 text-slate-600">Salud Mental / PROMs</td>
+                                <td class="p-3 font-semibold text-icv-navy">Pre-consulta inicial (vía Portal del Paciente HIC)</td>
+                                <td class="p-3"><span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Dinámico según condición</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Lista de Chequeo de Autogestión del Cuidador</td>
+                                <td class="p-3 text-slate-600">Competencias / PROMs</td>
+                                <td class="p-3 font-semibold text-icv-navy">Antes del egreso hospitalario / alta (100% cumplimiento)</td>
+                                <td class="p-3"><span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Pre-egreso</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">Encuesta de Satisfacción R-EP302-01</td>
+                                <td class="p-3 text-slate-600">Experiencia / PREMs</td>
+                                <td class="p-3 font-semibold text-icv-navy">Evaluación continua con informe mensual</td>
+                                <td class="p-3"><span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Mensual</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="view-datagrid" class="view-page space-y-4 hidden">
+            
+            <!-- Table Action Top Bar -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-extrabold text-icv-navy">Data Grid de Investigación Clínica CECF</h3>
+                    <p class="text-xs text-slate-500">Matriz anonimizada de investigación epidemiológica internacional (17 Columnas Estándar)</p>
+                </div>
+
+                <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                    <input type="text" id="grid-search-input" onkeyup="filterResearchGrid()" placeholder="Buscar por ID, Dx o CIE-10..." class="text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-icv-royal focus:outline-none w-48 sm:w-64">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Exportar Matriz REDCap</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESEARCH DATA GRID TABLE -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-icv-navy text-white uppercase font-bold text-[11px] tracking-wider">
+                            <tr>
+                                <th class="p-3">#</th>
+                                <th class="p-3">1. ID Paciente</th>
+                                <th class="p-3">2. Documento Doc</th>
+                                <th class="p-3">3. Edad Gest. Captura</th>
+                                <th class="p-3">4. Dpto Procedencia</th>
+                                <th class="p-3">5. CIE-10 Materno</th>
+                                <th class="p-3">6. CIE-10 Fetal</th>
+                                <th class="p-3">7. Diagnóstico Prenatal CECF</th>
+                                <th class="p-3">8. Riesgo CECF</th>
+                                <th class="p-3">9. Clasificación CHOP</th>
+                                <th class="p-3">10. Clasificación IMPACT</th>
+                                <th class="p-3">11. Diagnóstico Postnatal</th>
+                                <th class="p-3">12. Concordancia</th>
+                                <th class="p-3">13. Parto ICV-HIC</th>
+                                <th class="p-3">14. RACHS-1</th>
+                                <th class="p-3">15. Estado al Alta</th>
+                                <th class="p-3">16. Entregado PROMESA</th>
+                                <th class="p-3">17. EAPB / Aseguradora</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="research-table-body">
+                            <!-- Table Rows Generated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <script>
+        // Research & Patients Cohort Database
+        const researchDatabase = [
+            {
+                id: "CECF-001",
+                doc: "CC 1.098.456.789",
+                name: "María Camila Rodríguez",
+                age: 28,
+                currentWeeks: "31.4 Sem",
+                egCapture: "20.4 Sem",
+                origin: "Santander",
+                cieMaterno: "O99.8 (Enf. Materna)",
+                cieFetal: "O35.8 (Malformación Fetal)",
+                dxPrenatal: "Transposición de Grandes Arterias (TGA)",
+                risk: "3",
+                chop: "Level 6",
+                impact: "Class IIIa",
+                dxPostnatal: "TGA Simple Confirmada",
+                concordance: "Sí",
+                deliveryICV: "Sí",
+                rachs: "RACHS-3",
+                statusAlta: "VIVO (Alta Exitosa)",
+                promesa: "Sí",
+                eapb: "SURA",
+                dxCategory: "Septales"
+            },
+            {
+                id: "CECF-002",
+                doc: "CC 1.098.321.654",
+                name: "Diana Marcela Martínez",
+                age: 32,
+                currentWeeks: "34.2 Sem",
+                egCapture: "22.1 Sem",
+                origin: "Norte de Santander",
+                cieMaterno: "O24.4 (Diabetes Gestacional)",
+                cieFetal: "O35.8 (Malformación Fetal)",
+                dxPrenatal: "Hipoplasia Ventrículo Izquierdo (HLHS)",
+                risk: "3",
+                chop: "Level 7",
+                impact: "Class IIIa",
+                dxPostnatal: "HLHS Clásica",
+                concordance: "Sí",
+                deliveryICV: "Sí",
+                rachs: "RACHS-6",
+                statusAlta: "VIVO (Alta Exitosa)",
+                promesa: "Sí",
+                eapb: "NUEVA EPS",
+                dxCategory: "Univentricular"
+            },
+            {
+                id: "CECF-003",
+                doc: "CC 1.095.882.112",
+                name: "Laura Sofia Gómez",
+                age: 24,
+                currentWeeks: "28.1 Sem",
+                egCapture: "24.0 Sem",
+                origin: "Santander",
+                cieMaterno: "Z35.9 (Embarazo Alto Riesgo)",
+                cieFetal: "O35.8 (Malformación Fetal)",
+                dxPrenatal: "Comunicación Interventricular (CIV Perimembranosa)",
+                risk: "1",
+                chop: "Level 2",
+                impact: "Class Ia",
+                dxPostnatal: "CIV Perimembranosa 4mm",
+                concordance: "Sí",
+                deliveryICV: "Sí",
+                rachs: "RACHS-1",
+                statusAlta: "VIVO (Alta Exitosa)",
+                promesa: "Sí",
+                eapb: "SANITAS",
+                dxCategory: "Septales"
+            },
+            {
+                id: "CECF-004",
+                doc: "CC 1.092.741.990",
+                name: "Andrea Patricia Suárez",
+                age: 30,
+                currentWeeks: "33.0 Sem",
+                origin: "Cesar",
+                egCapture: "21.3 Sem",
+                cieMaterno: "O10.0 (HTA Preexistente)",
+                cieFetal: "O35.8 (Malformación Fetal)",
+                dxPrenatal: "Coartación de Aorta Grave",
+                risk: "2",
+                chop: "Level 5",
+                impact: "Class Ib",
+                dxPostnatal: "Coartación Aórtica + Hipoplasia Arco",
+                concordance: "Sí",
+                deliveryICV: "Sí",
+                rachs: "RACHS-2",
+                statusAlta: "VIVO (Alta Exitosa)",
+                promesa: "Sí",
+                eapb: "FAMISANAR",
+                dxCategory: "Obstructivas"
+            },
+            {
+                id: "CECF-005",
+                doc: "CC 1.098.112.334",
+                name: "Valentina Hernández",
+                age: 26,
+                currentWeeks: "29.5 Sem",
+                egCapture: "19.5 Sem",
+                origin: "Arauca",
+                cieMaterno: "Z35.9 (Embarazo Alto Riesgo)",
+                cieFetal: "O35.8 (Malformación Fetal)",
+                dxPrenatal: "Tetralogía de Fallot Clásica",
+                risk: "2",
+                chop: "Level 3",
+                impact: "Class II",
+                dxPostnatal: "Tetralogía de Fallot Severe",
+                concordance: "Sí",
+                deliveryICV: "Sí",
+                rachs: "RACHS-3",
+                statusAlta: "VIVO (Alta Exitosa)",
+                promesa: "Sí",
+                eapb: "COMPENSAR",
+                dxCategory: "Univentricular"
+            }
+        ];
+
+        let selectedPatient = researchDatabase[0];
+        let riskChartInstance = null;
+        let originChartInstance = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderPatientCards(researchDatabase);
+            renderResearchGrid(researchDatabase);
+            updateReminderPreview();
+        });
+
+        // Top Navigation Switcher
+        function showView(viewId) {
+            document.querySelectorAll('.view-page').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.top-nav-btn').forEach(btn => {
+                btn.classList.remove('border-icv-teal', 'text-cyan-300');
+                btn.classList.add('border-transparent', 'text-slate-300');
+            });
+
+            document.getElementById(viewId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + viewId);
+            if (activeBtn) {
+                activeBtn.classList.add('border-icv-teal', 'text-cyan-300');
+                activeBtn.classList.remove('border-transparent', 'text-slate-300');
+            }
+
+            if (viewId === 'view-kpis') {
+                setTimeout(() => initCharts(), 100);
+            }
+        }
+
+        // Render Patient Cards in View 0
+        function renderPatientCards(data) {
+            const container = document.getElementById("patient-cards-container");
+            container.innerHTML = "";
+
+            data.forEach((p) => {
+                let riskBadge = p.risk === "3" 
+                    ? `<span class="bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full text-[10px]">🔴 Riesgo Nivel 3 (Alto)</span>`
+                    : p.risk === "2"
+                    ? `<span class="bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full text-[10px]">🟡 Riesgo Nivel 2 (Interm.)</span>`
+                    : `<span class="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full text-[10px]">🟢 Riesgo Nivel 1 (Bajo)</span>`;
+
+                const card = document.createElement("div");
+                card.className = "bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-icv-teal transition cursor-pointer flex flex-col justify-between space-y-3";
+                card.onclick = () => selectPatientAndOpenDetail(p.id);
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-extrabold text-slate-900 text-sm hover:text-icv-royal transition">${p.name}</h3>
+                            <p class="text-[11px] text-slate-500 font-mono">${p.doc} | ${p.origin}</p>
+                        </div>
+                        ${riskBadge}
+                    </div>
+
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Diagnóstico Prenatal:</span>
+                            <span class="font-bold text-icv-navy">${p.dxPrenatal}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Semanas Actuales:</span>
+                            <span class="font-bold text-amber-700">${p.currentWeeks}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Aseguradora EAPB:</span>
+                            <span class="font-semibold text-slate-800">${p.eapb}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px] pt-1 text-icv-royal font-bold">
+                        <span>Ver Ficha & Mensajería</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterPatientCards() {
+            const query = document.getElementById("patient-search-input").value.toLowerCase();
+            const filtered = researchDatabase.filter(p => 
+                p.name.toLowerCase().includes(query) ||
+                p.doc.toLowerCase().includes(query) ||
+                p.dxPrenatal.toLowerCase().includes(query)
+            );
+            renderPatientCards(filtered);
+        }
+
+        function selectPatientAndOpenDetail(patientId) {
+            const p = researchDatabase.find(item => item.id === patientId);
+            if (!p) return;
+            selectedPatient = p;
+
+            // Update Header Banner
+            document.getElementById("patient-detail-name").innerText = p.name;
+            document.getElementById("patient-detail-meta").innerText = `${p.doc} | Edad: ${p.age} años | Semanas: ${p.currentWeeks} (Captura: ${p.egCapture}) | ${p.eapb} | ${p.origin}`;
+            
+            const riskEl = document.getElementById("patient-detail-risk");
+            if (p.risk === "3") {
+                riskEl.className = "bg-rose-500/20 text-rose-200 border border-rose-400/30 text-xs font-bold px-2.5 py-0.5 rounded-full";
+                riskEl.innerText = "🔴 Riesgo Nivel 3 (Alto)";
+            } else if (p.risk === "2") {
+                riskEl.className = "bg-amber-500/20 text-amber-200 border border-amber-400/30 text-xs font-bold px-2.5 py-0.5 rounded-full";
+                riskEl.innerText = "🟡 Riesgo Nivel 2 (Intermedio)";
+            } else {
+                riskEl.className = "bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-bold px-2.5 py-0.5 rounded-full";
+                riskEl.innerText = "🟢 Riesgo Nivel 1 (Bajo)";
+            }
+
+            // Update Tab Clinical Details
+            document.getElementById("p-detail-dx").innerText = p.dxPrenatal;
+            document.getElementById("p-detail-chop").innerText = p.chop;
+            document.getElementById("p-detail-impact").innerText = p.impact;
+            document.getElementById("p-detail-eps").innerText = p.eapb;
+
+            // Update Reminder Input
+            document.getElementById("rem-input-name").value = p.name;
+            updateReminderPreview();
+
+            showView("view-patient-detail");
+            switchPatientTab("tab-clinical-info");
+        }
+
+        function switchPatientTab(tabId) {
+            document.querySelectorAll('.patient-subtab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.patient-subtab-btn').forEach(btn => {
+                btn.classList.remove('bg-icv-navy', 'text-white');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-icv-navy', 'text-white');
+                activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+            }
+        }
+
+        // Live Reminder Message Generator
+        function updateReminderPreview() {
+            const name = document.getElementById("rem-input-name").value || "María Camila Rodríguez";
+            const date = document.getElementById("rem-input-date").value || "2026-11-15";
+            const time = document.getElementById("rem-input-time").value || "09:30";
+            const location = document.getElementById("rem-input-location").value || "Piso 4, Consultorio 402 - Ecocardiografía Fetal";
+
+            const previewContainer = document.getElementById("reminder-message-body");
+            previewContainer.innerHTML = `
+                <p class="font-bold text-sm text-icv-navy">¡Hola, ${name}! <span class="text-rose-500 font-bold">❤️</span></p>
+                <p>Esperamos que te encuentres muy bien. Desde el Centro de Excelencia en Cardiología Fetal queremos recordarte que la Dra. Yudisay Molina programó el próximo control ecocardiográfico de tu bebé según las indicaciones de su último reporte.</p>
+                <div class="bg-white p-3 rounded-xl border border-slate-200 font-semibold space-y-1 text-slate-800">
+                    <p>📅 <strong>Fecha:</strong> ${date}</p>
+                    <p>⏰ <strong>Hora:</strong> ${time}</p>
+                    <p>📍 <strong>Lugar:</strong> Instituto Cardiovascular - HIC, ${location}</p>
+                </div>
+                <p>Recuerda que este control es fundamental para seguir acompañando de cerca la evolución y salud del corazón de tu bebé.</p>
+                <p>Si tienes alguna inquietud o necesitas apoyo con la gestión de tu cita, ¡escríbenos! al número <strong>3242099887</strong>. Estamos aquí para ti. ✨</p>
+                <p class="font-bold text-slate-900 pt-1">Recomendaciones para el día de tu cita:</p>
+                <ol class="list-decimal pl-5 space-y-1 text-slate-700">
+                    <li>Traer tu documento de identidad y el reporte previo.</li>
+                    <li>Llegar con 40 minutos de anticipación.</li>
+                    <li>Si requeriste alguna orden o autorización previa, confirmar que la tengas lista.</li>
+                </ol>
+                <p class="italic text-slate-600 font-medium pt-2">¡Recuerda que caminamos juntas en cada etapa! 🌸</p>
+            `;
+        }
+
+        function copyWelcomeMessage() {
+            const text = `¡Bienvenida al Centro de Excelencia en Cardiología Fetal del HIC - Instituto Cardiovascular! ❤️👶\n\nSabemos que este es un momento de muchas emociones, dudas y preguntas. Queremos que sepas que no estás sola. A partir de hoy, tú y tu bebé cuentan con los brazos abiertos de un equipo humano y médico especializado que estará a tu lado en cada paso del camino.\n\nEn nuestro Centro de Excelencia no solo cuidamos la salud del corazón de tu bebé con la más alta tecnología; cuidamos de ti. Dispones de un equipo multidisciplinario completo (Cardiología Fetal, Medicina Materno-Fetal, Enfermería, Psicología, Trabajo Social y Nutrición) enfocado en brindarte una atención humana, cálida y de máxima excelencia.\n\n¿Qué puedes esperar de nosotros?\n- 📞 Seguimiento y acompañamiento telefónico continuo: Estaremos pendientes de tus citas, dudas y evolución.\n- 🤝 Apoyo integral: Queremos que te sientas escuchada, respaldada y segura en todo momento.\n- 👩‍⚕️ Atención especializada y empática: Tu bienestar y el de tu bebé son nuestra prioridad.\n\nGracias por confiarnos lo más valioso. ¡Caminaremos juntos durante esta etapa!`;
+            
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = text;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            showNotificationToast("Mensaje de Bienvenida copiado al portapapeles.");
+        }
+
+        function copyReminderMessage() {
+            const name = document.getElementById("rem-input-name").value;
+            const date = document.getElementById("rem-input-date").value;
+            const time = document.getElementById("rem-input-time").value;
+            const location = document.getElementById("rem-input-location").value;
+
+            const text = `¡Hola, ${name}! ❤️\n\nEsperamos que te encuentres muy bien. Desde el Centro de Excelencia en Cardiología Fetal queremos recordarte que la Dra. Yudisay Molina programó el próximo control ecocardiográfico de tu bebé según las indicaciones de su último reporte.\n\n📅 Fecha: ${date}\n⏰ Hora: ${time}\n📍 Lugar: Instituto Cardiovascular - HIC, ${location}\n\nRecuerda que este control es fundamental para seguir acompañando de cerca la evolución y salud del corazón de tu bebé.\n\nSi tienes alguna inquietud o necesitas apoyo con la gestión de tu cita, ¡escríbenos! al numero 3242099887. Estamos aquí para ti. ✨\n\nRecomendaciones para el día de tu cita:\n1. Traer tu documento de identidad y el reporte previo.\n2. Llegar con 40 minutos de anticipación.\n3. Si requeriste alguna orden o autorización previa, confirmar que la tengas lista.\n\n¡Recuerda que caminamos juntas en cada etapa! 🌸`;
+
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = text;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            showNotificationToast("Mensaje de Recordatorio copiado al portapapeles.");
+        }
+
+        function sendSimulatedWhatsApp(type) {
+            const msgName = type === 'welcome' ? 'Bienvenida' : 'Recordatorio Cita';
+            showNotificationToast(`Mensaje de ${msgName} enviado con éxito vía canal institucional CECF / WhatsApp.`);
+        }
+
+        // Render Research Grid Table
+        function renderResearchGrid(data) {
+            const tbody = document.getElementById("research-table-body");
+            tbody.innerHTML = "";
+
+            data.forEach((row, index) => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-400">${index + 1}</td>
+                    <td class="p-3 font-bold text-icv-navy">${row.id}</td>
+                    <td class="p-3 text-slate-600 font-mono">${row.doc}</td>
+                    <td class="p-3 font-semibold text-slate-800">${row.egCapture}</td>
+                    <td class="p-3 text-slate-700">${row.origin}</td>
+                    <td class="p-3 font-mono text-[11px] text-slate-600">${row.cieMaterno}</td>
+                    <td class="p-3 font-mono text-[11px] text-slate-600">${row.cieFetal}</td>
+                    <td class="p-3 font-bold text-slate-900">${row.dxPrenatal}</td>
+                    <td class="p-3 font-bold ${row.risk === '3' ? 'text-rose-600' : 'text-amber-600'}">Nivel ${row.risk}</td>
+                    <td class="p-3 text-slate-700">${row.chop}</td>
+                    <td class="p-3 font-semibold text-rose-700">${row.impact}</td>
+                    <td class="p-3 text-slate-800">${row.dxPostnatal}</td>
+                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">${row.concordance}</span></td>
+                    <td class="p-3 text-emerald-700 font-bold">${row.deliveryICV}</td>
+                    <td class="p-3 font-mono font-bold text-slate-700">${row.rachs}</td>
+                    <td class="p-3 font-bold text-emerald-700">${row.statusAlta}</td>
+                    <td class="p-3 font-bold text-slate-800">${row.promesa}</td>
+                    <td class="p-3 font-semibold text-icv-royal">${row.eapb}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById("count-total-records").innerText = data.length;
+        }
+
+        function filterResearchGrid() {
+            const query = document.getElementById("grid-search-input").value.toLowerCase();
+            const filtered = researchDatabase.filter(r => 
+                r.id.toLowerCase().includes(query) ||
+                r.dxPrenatal.toLowerCase().includes(query) ||
+                r.cieMaterno.toLowerCase().includes(query) ||
+                r.origin.toLowerCase().includes(query)
+            );
+            renderResearchGrid(filtered);
+        }
+
+        // Apply Dynamic Global Filters
+        function applyGlobalFilters() {
+            const risk = document.getElementById("filter-risk").value;
+            const eps = document.getElementById("filter-eps").value;
+            const origin = document.getElementById("filter-origin").value;
+            const dxType = document.getElementById("filter-dx-type").value;
+
+            let filtered = researchDatabase.filter(item => {
+                if (risk !== "ALL" && item.risk !== risk) return false;
+                if (eps !== "ALL" && item.eapb !== eps) return false;
+                if (origin !== "ALL" && item.origin !== origin) return false;
+                if (dxType !== "ALL" && item.dxCategory !== dxType) return false;
+                return true;
+            });
+
+            renderPatientCards(filtered);
+            renderResearchGrid(filtered);
+            showNotificationToast(`Filtros aplicados. ${filtered.length} registros encontrados.`);
+        }
+
+        function resetGlobalFilters() {
+            document.getElementById("filter-date").value = "YTD";
+            document.getElementById("filter-risk").value = "ALL";
+            document.getElementById("filter-eps").value = "ALL";
+            document.getElementById("filter-origin").value = "ALL";
+            document.getElementById("filter-dx-type").value = "ALL";
+
+            renderPatientCards(researchDatabase);
+            renderResearchGrid(researchDatabase);
+            showNotificationToast("Filtros restablecidos al valor por defecto.");
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            if (riskChartInstance) riskChartInstance.destroy();
+            if (originChartInstance) originChartInstance.destroy();
+
+            const ctxRisk = document.getElementById('chart-risk-dist').getContext('2d');
+            riskChartInstance = new Chart(ctxRisk, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Nivel 1 (Bajo Riesgo)', 'Nivel 2 (Riesgo Intermedio)', 'Nivel 3 (Alto Riesgo)'],
+                    datasets: [{
+                        data: [45, 38, 17],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            const ctxOrigin = document.getElementById('chart-origin-dist').getContext('2d');
+            originChartInstance = new Chart(ctxOrigin, {
+                type: 'bar',
+                data: {
+                    labels: ['Santander', 'N. Santander', 'Cesar', 'Arauca', 'Otros Dptos'],
+                    datasets: [{
+                        label: 'Número de Pacientes',
+                        data: [68, 28, 14, 10, 8],
+                        backgroundColor: '#0284C7',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function refreshData() {
+            showNotificationToast("Datos sincronizados correctamente con SAHI y REDCap.");
+        }
+
+        function exportToExcel() {
+            showNotificationToast("Generando exportación de base de datos REDCap (Formato XLSX)...");
+        }
+
+        function showNotificationToast(msg) {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            toast.className = "bg-icv-navy text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg border border-cyan-400/30 flex items-center space-x-2 animate-bounce pointer-events-auto";
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-icv-teal"></i> <span>${msg}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
